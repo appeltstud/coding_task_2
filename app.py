@@ -5,9 +5,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import requests
 import textwrap # Added import
+import ast # Added import
 
 # df = pickle.load(open('movies.pkl', 'rb'))
-df = pd.read_csv('data.csv')
+df = pd.read_csv('data_with_ratings.csv') # Changed to read data_with_ratings.csv
 titles = df['title'].values
 cv = CountVectorizer(max_features=5000, stop_words='english')
 vectors = cv.fit_transform(df['tags']).toarray()
@@ -74,6 +75,45 @@ def format_movie_title(title_text):
     else: # len(original_lines) == TARGET_NUM_LINES
         return "<br>".join(original_lines)
 
+def generate_star_rating_html(ratings_data):
+    """
+    Generates an HTML string for star rating display.
+    ratings_data can be a string representation of a list, an actual list, or None.
+    Assumes ratings in the list are on a 1-5 scale.
+    """
+    ratings_list = None
+    if isinstance(ratings_data, list):
+        ratings_list = ratings_data
+    elif isinstance(ratings_data, str):
+        try:
+            ratings_list = ast.literal_eval(ratings_data)
+        except (ValueError, SyntaxError):
+            ratings_list = None # Invalid string format
+
+    if not isinstance(ratings_list, list) or not ratings_list:
+        return "<p style='text-align: center; font-size: small; color: #888;'>No ratings available</p>"
+
+    try:
+        # Ensure all ratings are numbers, filter out non-numeric if any
+        numeric_ratings = [r for r in ratings_list if isinstance(r, (int, float))]
+        if not numeric_ratings:
+            return "<p style='text-align: center; font-size: small; color: #888;'>No valid ratings</p>"
+
+        avg_numeric_rating = sum(numeric_ratings) / len(numeric_ratings)
+        num_total_ratings = len(numeric_ratings)
+
+        # Ratings are already 1-5, so round the average to the nearest star value
+        # Clamp the value between 0 and 5 to be safe
+        num_filled_stars = round(avg_numeric_rating)
+        num_filled_stars = max(0, min(5, int(num_filled_stars))) # Ensure it's an int between 0 and 5
+        
+        num_empty_stars = 5 - num_filled_stars
+
+        star_str = "★" * num_filled_stars + "☆" * num_empty_stars
+        # Modified f-string to put rating count on a new line
+        return f"<p style='text-align: center; font-size: small;'>{star_str}<br>({num_total_ratings} ratings)</p>"
+    except Exception: # Catch any other unexpected error during calculation
+        return "<p style='text-align: center; font-size: small; color: #888;'>Rating error</p>"
 
 def fetch_poster(movie_id):
     response = requests.get(f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY_AUTH}')
@@ -143,7 +183,21 @@ if st.button('Recommend'):
                              st.image(recommended_movie_posters[recommendation_index], use_column_width='always')
                         else:
                              st.caption("Poster not available") # Placeholder if poster is missing
-                             st.write("")
+                        
+                        # Display star ratings
+                        movie_title_for_rating = recommended_movie_names[recommendation_index]
+                        # Find the movie in the DataFrame
+                        movie_row = df[df['title'] == movie_title_for_rating]
+                        rating_display_html = ""
+                        if not movie_row.empty:
+                            movie_data_series = movie_row.iloc[0]
+                            if 'ratings' in movie_data_series and pd.notna(movie_data_series['ratings']):
+                                rating_display_html = generate_star_rating_html(movie_data_series['ratings'])
+                            else:
+                                rating_display_html = generate_star_rating_html(None) # No 'ratings' column or NaN
+                        else:
+                            rating_display_html = generate_star_rating_html(None) # Movie not found in df
+                        st.markdown(rating_display_html, unsafe_allow_html=True)
                 else:
                     with cols[col_index]:
                         st.write("") # Empty column if no more recommendations
