@@ -25,18 +25,18 @@ def recommender(movie_title, df_movies, similarity_matrix):
     Returns a list of recommended movie titles and their posters.
     """
     if df_movies is None or movie_title is None or similarity_matrix is None:
-        return [], []
+        return [], [], []
         
     try:
         # Check if movie_title exists in the DataFrame
         if movie_title not in df_movies['title'].values:
             # st.error(f"Movie '{movie_title}' not found in the database.") # Consider logging or specific UI feedback
-            return [], [] # Movie not found
+            return [], [], [] # Movie not found
 
         movie_index = df_movies[df_movies['title'] == movie_title].index[0]
     except IndexError:
         # This case should ideally be caught by the check above, but as a fallback:
-        return [], []
+        return [], [], []
         
     distances = similarity_matrix[movie_index]
     # Get top 20 similar movies (excluding the movie itself, hence [1:21])
@@ -44,6 +44,7 @@ def recommender(movie_title, df_movies, similarity_matrix):
     
     recommended_movies = []
     recommended_movie_posters = []
+    recommended_movie_ids = []
     
     for i_movie_info in movies_list:
         idx = i_movie_info[0]
@@ -54,6 +55,7 @@ def recommender(movie_title, df_movies, similarity_matrix):
 
             if current_movie_title: # Ensure title is not None
                 recommended_movies.append(current_movie_title)
+                recommended_movie_ids.append(movie_id if pd.notna(movie_id) else None)
                 if movie_id and pd.notna(movie_id): # Check for NaN movie_id
                     # Pass API_KEY_AUTH to fetch_poster if it's not globally configured there
                     recommended_movie_posters.append(fetch_poster(int(movie_id), API_KEY_AUTH))
@@ -61,5 +63,5 @@ def recommender(movie_title, df_movies, similarity_matrix):
                     recommended_movie_posters.append(None) # No movie_id, no poster
             # If title is None, we skip adding this movie to recommendations.
         
-    return recommended_movies, recommended_movie_posters
+    return recommended_movies, recommended_movie_posters, recommended_movie_ids
 

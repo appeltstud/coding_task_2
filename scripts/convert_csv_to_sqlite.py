@@ -4,8 +4,8 @@ import pandas as pd
 import sqlite3
 
 # Define paths
-CSV_FILE_PATH = "data_with_ratings.csv"
-DB_FILE_PATH = "movies.db"
+CSV_FILE_PATH = "data/data.csv"  # Adjusted path
+DB_FILE_PATH = "data/movies.db"  # Adjusted path
 TABLE_NAME = "movies"
 
 def create_sqlite_from_csv():
