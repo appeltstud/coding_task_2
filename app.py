@@ -17,11 +17,8 @@ st.set_page_config(layout="wide")
 # Process ratings from session state
 data = st.session_state
 for title, rating in data.items():
-    if title == "key" or title.startswith("FormSubmitter"):
-        continue
-    if rating is not None and rating != "null":
-        rating = int(rating) + 1
-        update_ratings(title, rating)
+    # rating need to be increased by 1 to match the database logic
+    update_ratings(title, rating)
 
 df = load_data_from_db()
 titles = get_titles(df)

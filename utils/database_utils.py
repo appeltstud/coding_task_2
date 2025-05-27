@@ -53,43 +53,4 @@ def load_data_from_db() -> pd.DataFrame:
 
 
 def update_ratings(movie_id_str: str, rating: int) -> None:
-    """Updates the rating for a movie in the database.
-
-    Args:
-        movie_id_str: The ID of the movie (as a string, will be converted to int).
-        rating: The new rating to add.
-    """
     df = load_data_from_db() 
-
-    try:
-        movie_id_int = int(movie_id_str)
-    except ValueError:
-        st.error(f"Invalid movie_id: {movie_id_str}. It must be an integer.")
-        return
-
-    movie_exists = df["movie_id"] == movie_id_int
-    if not movie_exists.any():
-        st.error(f"Movie with id {movie_id_int} not found in the database.")
-        return
-
-    current_ratings = df.loc[movie_exists, "ratings"].iloc[0]
-    if not isinstance(current_ratings, list): # Should already be a list from parse_ratings_column
-        current_ratings = [] 
-
-    new_ratings = current_ratings + [rating]
-    # Update the DataFrame; ensure the new_ratings is treated as a single list element for the cell
-    df.loc[movie_exists, "ratings"] = pd.Series([new_ratings], index=df[movie_exists].index)
-
-    # Prepare DataFrame for saving: convert list-like 'ratings' to string
-    df_to_save = df.copy()
-    # Convert list of ratings to string representation for SQLite storage
-    df_to_save['ratings'] = df_to_save['ratings'].apply(lambda x: str(x) if isinstance(x, list) else x)
-
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        df_to_save.to_sql(TABLE_NAME, conn, if_exists="replace", index=False)
-        # st.write("Successfully saved updated ratings to database.") # Optional: success message
-    except Exception as e:
-        st.error(f"Error saving to database: {e}")
-    finally:
-        conn.close()
